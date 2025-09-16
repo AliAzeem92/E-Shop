@@ -1,19 +1,32 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { ProductCard } from '@/components/ProductCard'
-import { prisma } from '@/lib/prisma'
+import { ProductWithRelations } from '@/types'
 
-export default async function HomePage() {
-  const featuredProducts = await prisma.product.findMany({
-    take: 8,
-    include: {
-      reviews: true,
-      _count: {
-        select: { reviews: true }
+export default function HomePage() {
+  const [featuredProducts, setFeaturedProducts] = useState<ProductWithRelations[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    try {
+      const response = await fetch('/api/products?limit=8')
+      if (response.ok) {
+        const data = await response.json()
+        setFeaturedProducts(data.slice(0, 8))
       }
-    },
-    orderBy: { createdAt: 'desc' }
-  })
+    } catch (error) {
+      console.error('Failed to fetch products:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const categories = [
     { name: 'Clothing', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400', href: '/products?category=clothing' },
@@ -71,9 +84,19 @@ export default async function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl font-bold text-center mb-12">Featured Products</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {loading ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="card animate-pulse">
+                  <div className="bg-gray-300 h-48 rounded-lg mb-4"></div>
+                  <div className="bg-gray-300 h-4 rounded mb-2"></div>
+                  <div className="bg-gray-300 h-6 rounded"></div>
+                </div>
+              ))
+            ) : (
+              featuredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            )}
           </div>
           <div className="text-center mt-12">
             <Link href="/products" className="btn-primary">
